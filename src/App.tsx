@@ -103,12 +103,12 @@ export const App: React.FC = () => {
         });
         setInputValue('');
       })
-      .catch(() => {
+      .catch(er => {
         setTodos(prevTodos => prevTodos.filter(item => item.id !== tempId));
         setError(true);
         setErrorMessage('Unable to add a todo');
 
-        return;
+        throw er;
       })
       .finally(() => {
         setDisable(false);
@@ -121,15 +121,17 @@ export const App: React.FC = () => {
     setError(false);
     setErrorMessage('');
 
-    deleteTodo(todoId)
+    return deleteTodo(todoId)
       .then(() => {
         setTodos(prevState => prevState.filter(todo => todo.id !== todoId));
+
+        return true;
       })
       .catch(() => {
         setError(true);
         setErrorMessage('Unable to delete a todo');
 
-        return;
+        return false;
       })
       .finally(() => {
         setPendingList(prevList => prevList.filter(item => item !== todoId));
@@ -137,29 +139,37 @@ export const App: React.FC = () => {
       });
   };
 
-  const handleStatusUpdate = (todoId: number) => {
+  const handleStatusUpdate = (todoId: number, nextCompleted?: boolean) => {
     setPendingList(prevList => [...prevList, todoId]);
     setError(false);
     setErrorMessage('');
 
-    const currentTodo = todos.filter(todo => todo.id === todoId)[0];
+    const currentTodo = todos.find(todo => todo.id === todoId);
 
-    updateTodo({
-      todoId,
-      completed: !currentTodo?.completed,
-    })
-      .catch(() => {
-        setError(true);
-        setErrorMessage('Unable to update a todo');
+    if (!currentTodo) {
+      setPendingList(prevList => prevList.filter(item => item !== todoId));
 
-        return;
-      })
+      return;
+    }
+
+    const updatedCompleted =
+      typeof nextCompleted === 'boolean'
+        ? nextCompleted
+        : !currentTodo.completed;
+
+    updateTodo({ todoId, completed: updatedCompleted })
       .then(() => {
         setTodos((prevState: Todo[]) => {
           return prevState.map((todo: Todo) =>
-            todo.id === todoId ? { ...todo, completed: !todo.completed } : todo,
+            todo.id === todoId
+              ? { ...todo, completed: updatedCompleted }
+              : todo,
           );
         });
+      })
+      .catch(() => {
+        setError(true);
+        setErrorMessage('Unable to update a todo');
       })
       .finally(() => {
         setPendingList(prevList => prevList.filter(item => todoId !== item));
@@ -167,27 +177,31 @@ export const App: React.FC = () => {
   };
 
   const handleRenameTodo = (todoId: number, title: string) => {
+    const normalizedTitle = title.trim();
+
+    if (normalizedTitle === '') {
+      return handleDeleteTodo(todoId);
+    }
+
     setPendingList(prevList => [...prevList, todoId]);
     setError(false);
     setErrorMessage('');
 
-    if (title === '') {
-      handleDeleteTodo(todoId);
-    }
-
-    updateTodo({ todoId, title })
+    return updateTodo({ todoId, title: normalizedTitle })
       .then(() => {
         setTodos((prevState: Todo[]) => {
           return prevState.map((todo: Todo) =>
-            todo.id === todoId ? { ...todo, title: title } : todo,
+            todo.id === todoId ? { ...todo, title: normalizedTitle } : todo,
           );
         });
+
+        return true;
       })
       .catch(() => {
         setError(true);
         setErrorMessage('Unable to update a todo');
 
-        return;
+        return false;
       })
       .finally(() => {
         setPendingList(prevList => prevList.filter(item => item !== todoId));
@@ -195,22 +209,14 @@ export const App: React.FC = () => {
   };
 
   const handleUpdateAllStatus = () => {
-    setError(false);
-    setErrorMessage('');
+    const nextCompleted = !todos.every(todo => todo.completed);
+    const todosToUpdate = todos.filter(
+      todo => todo.completed !== nextCompleted,
+    );
 
-    setTodos((prevState: Todo[]) => {
-      return prevState.map((todo: Todo) => ({
-        ...todo,
-        completed: !todo.completed,
-      }));
+    todosToUpdate.forEach(todo => {
+      handleStatusUpdate(todo.id, nextCompleted);
     });
-
-    // setPendingList((prevList: Todo[]) => {
-    //   return prevList.map((todo: Todo) => ({
-    //     ...todo,
-    //     completed: !todo.completed,
-    //   }));
-    // });
   };
 
   if (!USER_ID) {
@@ -223,12 +229,12 @@ export const App: React.FC = () => {
 
       <div className="todoapp__content">
         <header className="todoapp__header">
-          {todos && (
+          {todos.length > 0 && (
             <button
               type="button"
               className={classNames({
                 'todoapp__toggle-all': true,
-                active: todos.some(item => item.completed === true),
+                active: todos.every(item => item.completed === true),
               })}
               data-cy="ToggleAllButton"
               onClick={event => {

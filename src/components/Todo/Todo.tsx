@@ -1,125 +1,160 @@
-/* eslint-disable jsx-a11y/label-has-associated-control */
-/* eslint-disable jsx-a11y/control-has-associated-label */
-
 import classNames from 'classnames';
 import { Todo } from '../../types/Todo';
-import { useState } from 'react';
+import { forwardRef, useRef, useState } from 'react';
 import type { FormEvent } from 'react';
 
 type Props = {
   todo: Todo;
   toggleStatus: (value: number) => void;
-  deleteTodo: (value: number) => void;
+  deleteTodo: (value: number) => Promise<boolean>;
   pendingList: number[];
-  renameTodo: (id: number, value: string) => void;
+  renameTodo: (id: number, value: string) => Promise<boolean>;
 };
 
-export const TodoItem: React.FC<Props> = ({
-  todo,
-  toggleStatus,
-  deleteTodo,
-  pendingList,
-  renameTodo,
-}) => {
-  const { id, title, completed } = todo;
+export const TodoItem = forwardRef<HTMLDivElement, Props>(
+  ({ todo, toggleStatus, deleteTodo, pendingList, renameTodo }, ref) => {
+    const { id, title, completed } = todo;
 
-  const buttonHandler = (todoId: number) => {
-    deleteTodo(todoId);
-  };
+    const buttonHandler = (todoId: number) => {
+      deleteTodo(todoId);
+    };
 
-  const [editMode, setEditMode] = useState(false);
-  const [value, setValue] = useState(title);
+    const [editMode, setEditMode] = useState(false);
+    const [value, setValue] = useState(title);
+    const isSubmitting = useRef(false);
+    const isCancelling = useRef(false);
 
-  const formHandler = (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
+    const submitChanges = () => {
+      if (isSubmitting.current) {
+        return;
+      }
 
-    if (value.trim() === title) {
-      setEditMode(false);
-    }
+      const normalizedValue = value.trim();
 
-    renameTodo(id, value);
-  };
+      if (normalizedValue === title) {
+        setEditMode(false);
 
-  return (
-    <div
-      data-cy="Todo"
-      className={classNames({
-        todo: true,
-        completed: completed,
-      })}
-      data-id={id}
-    >
-      <label className="todo__status-label">
-        <input
-          data-cy="TodoStatus"
-          type="checkbox"
-          className="todo__status"
-          checked={completed}
-          onChange={() => {
-            toggleStatus(id);
-          }}
-        />
-      </label>
+        return;
+      }
 
-      {editMode ? (
-        <form onSubmit={formHandler}>
+      isSubmitting.current = true;
+
+      renameTodo(id, normalizedValue)
+        .then(isSuccess => {
+          if (isSuccess) {
+            setEditMode(false);
+          }
+        })
+        .finally(() => {
+          isSubmitting.current = false;
+        });
+    };
+
+    const formHandler = (event: FormEvent<HTMLFormElement>) => {
+      event.preventDefault();
+      submitChanges();
+    };
+
+    return (
+      <div
+        ref={ref}
+        data-cy="Todo"
+        className={classNames({
+          todo: true,
+          completed: completed,
+        })}
+        data-id={id}
+      >
+        <label
+          className="todo__status-label"
+          htmlFor={`input-${id}`}
+          aria-label="Toggle todo status"
+        >
           <input
-            type="text"
-            data-cy="TodoTitleField"
-            defaultValue={title}
-            placeholder="Empty todo will be deleted"
-            className={classNames({
-              'todo__title-field': true,
-            })}
-            autoFocus
-            onBlur={() => {
-              setEditMode(false);
-            }}
-            onChange={event => {
-              setValue(event.target.value);
-            }}
-            onKeyUp={event => {
-              if (event.key === 'Escape') {
-                setEditMode(false);
-              }
+            id={`input-${id}`}
+            data-cy="TodoStatus"
+            type="checkbox"
+            className="todo__status"
+            checked={completed}
+            onChange={() => {
+              toggleStatus(id);
             }}
           />
-        </form>
-      ) : (
-        <>
-          <span
-            data-cy="TodoTitle"
-            className="todo__title"
-            onDoubleClick={() => {
-              setEditMode(true);
-            }}
-          >
-            {title}
-          </span>
+        </label>
 
-          <button
-            type="button"
-            className="todo__remove"
-            data-cy="TodoDelete"
-            onClick={() => {
-              buttonHandler(id);
-            }}
-          >
-            ×
-          </button>
-        </>
-      )}
+        {editMode ? (
+          <form onSubmit={formHandler}>
+            <input
+              type="text"
+              data-cy="TodoTitleField"
+              defaultValue={title}
+              placeholder="Empty todo will be deleted"
+              className={classNames({
+                'todo__title-field': true,
+              })}
+              autoFocus
+              onBlur={() => {
+                if (isCancelling.current) {
+                  isCancelling.current = false;
 
-      <div
-        data-cy="TodoLoader"
-        className={classNames({
-          'modal overlay': true,
-          'is-active': pendingList.includes(id),
-        })}
-      >
-        <div className="modal-background has-background-white-ter" />
-        <div className="loader" />
+                  return;
+                }
+
+                submitChanges();
+              }}
+              onChange={event => {
+                setValue(event.target.value);
+              }}
+              onKeyUp={event => {
+                if (event.key === 'Escape') {
+                  isCancelling.current = true;
+                  isSubmitting.current = false;
+                  setEditMode(false);
+                }
+              }}
+            />
+          </form>
+        ) : (
+          <>
+            <span
+              data-cy="TodoTitle"
+              className="todo__title"
+              onDoubleClick={() => {
+                isCancelling.current = false;
+                isSubmitting.current = false;
+                setValue(title);
+                setEditMode(true);
+              }}
+            >
+              {title}
+            </span>
+
+            <button
+              type="button"
+              className="todo__remove"
+              data-cy="TodoDelete"
+              onClick={() => {
+                buttonHandler(id);
+              }}
+            >
+              ×
+            </button>
+          </>
+        )}
+
+        <div
+          data-cy="TodoLoader"
+          className={classNames({
+            'modal overlay': true,
+            'is-active': pendingList.includes(id),
+          })}
+        >
+          <div className="modal-background has-background-white-ter" />
+          <div className="loader" />
+        </div>
       </div>
-    </div>
-  );
-};
+    );
+  },
+);
+
+TodoItem.displayName = 'TodoItem';

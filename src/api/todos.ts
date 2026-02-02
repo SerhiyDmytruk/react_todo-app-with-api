@@ -20,11 +20,28 @@ export const deleteTodo = (todoId: number) => {
   return client.delete(`/todos/${todoId}`);
 };
 
+type UpdateTodoPayload = {
+  todoId: number;
+  title?: string;
+  completed?: boolean;
+  userId?: number;
+};
+
 export const updateTodo = ({
   todoId,
   title,
   completed,
   userId = USER_ID,
-}: Todo) => {
-  return client.patch<Todo>(`/todos/${todoId}`, { title, completed, userId });
+}: UpdateTodoPayload) => {
+  const data: Partial<Todo> = { userId };
+
+  if (title !== undefined) {
+    data.title = title;
+  }
+
+  if (completed !== undefined) {
+    data.completed = completed;
+  }
+
+  return client.patch<Todo>(`/todos/${todoId}`, data);
 };
