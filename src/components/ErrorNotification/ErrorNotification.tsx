@@ -46,9 +46,6 @@ export const ErrorNotification: React.FC<Props> = ({
           setStatusMessage('');
         }}
       />
-      {/* show only one message at a time */}
-      {/* 
-      Unable to update a todo */}
       {statusMessage}
     </div>
   );

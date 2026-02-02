@@ -1,11 +1,18 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { UserWarning } from './UserWarning';
-import { getTodos, addTodo, USER_ID, deleteTodo } from './api/todos';
+import {
+  getTodos,
+  addTodo,
+  USER_ID,
+  deleteTodo,
+  updateTodo,
+} from './api/todos';
 import { ErrorNotification } from './components/ErrorNotification';
 import { TodoList } from './components/TodoList';
 import { NewTodo } from './components/NewTodo';
 import { Todo } from './types/Todo';
 import { Footer } from './components/Footer';
+import classNames from 'classnames';
 
 type TodoWithTemp = Todo & { temp?: boolean };
 
@@ -100,6 +107,8 @@ export const App: React.FC = () => {
         setTodos(prevTodos => prevTodos.filter(item => item.id !== tempId));
         setError(true);
         setErrorMessage('Unable to add a todo');
+
+        return;
       })
       .finally(() => {
         setDisable(false);
@@ -107,18 +116,10 @@ export const App: React.FC = () => {
       });
   };
 
-  const handleUpdate = (todoId: number) => {
-    setTodos((prevState: Todo[]) => {
-      return prevState.map((todo: Todo) =>
-        todo.id === todoId ? { ...todo, completed: !todo.completed } : todo,
-      );
-    });
-
-    setPendingList(prevList => prevList.filter(item => todoId !== item));
-  };
-
   const handleDeleteTodo = (todoId: number) => {
     setPendingList(prevList => [...prevList, todoId]);
+    setError(false);
+    setErrorMessage('');
 
     deleteTodo(todoId)
       .then(() => {
@@ -127,11 +128,89 @@ export const App: React.FC = () => {
       .catch(() => {
         setError(true);
         setErrorMessage('Unable to delete a todo');
+
+        return;
       })
       .finally(() => {
         setPendingList(prevList => prevList.filter(item => item !== todoId));
         inputFocus();
       });
+  };
+
+  const handleStatusUpdate = (todoId: number) => {
+    setPendingList(prevList => [...prevList, todoId]);
+    setError(false);
+    setErrorMessage('');
+
+    const currentTodo = todos.filter(todo => todo.id === todoId)[0];
+
+    updateTodo({
+      todoId,
+      completed: !currentTodo?.completed,
+    })
+      .catch(() => {
+        setError(true);
+        setErrorMessage('Unable to update a todo');
+
+        return;
+      })
+      .then(() => {
+        setTodos((prevState: Todo[]) => {
+          return prevState.map((todo: Todo) =>
+            todo.id === todoId ? { ...todo, completed: !todo.completed } : todo,
+          );
+        });
+      })
+      .finally(() => {
+        setPendingList(prevList => prevList.filter(item => todoId !== item));
+      });
+  };
+
+  const handleRenameTodo = (todoId: number, title: string) => {
+    setPendingList(prevList => [...prevList, todoId]);
+    setError(false);
+    setErrorMessage('');
+
+    if (title === '') {
+      handleDeleteTodo(todoId);
+    }
+
+    updateTodo({ todoId, title })
+      .then(() => {
+        setTodos((prevState: Todo[]) => {
+          return prevState.map((todo: Todo) =>
+            todo.id === todoId ? { ...todo, title: title } : todo,
+          );
+        });
+      })
+      .catch(() => {
+        setError(true);
+        setErrorMessage('Unable to update a todo');
+
+        return;
+      })
+      .finally(() => {
+        setPendingList(prevList => prevList.filter(item => item !== todoId));
+      });
+  };
+
+  const handleUpdateAllStatus = () => {
+    setError(false);
+    setErrorMessage('');
+
+    setTodos((prevState: Todo[]) => {
+      return prevState.map((todo: Todo) => ({
+        ...todo,
+        completed: !todo.completed,
+      }));
+    });
+
+    // setPendingList((prevList: Todo[]) => {
+    //   return prevList.map((todo: Todo) => ({
+    //     ...todo,
+    //     completed: !todo.completed,
+    //   }));
+    // });
   };
 
   if (!USER_ID) {
@@ -147,8 +226,15 @@ export const App: React.FC = () => {
           {todos && (
             <button
               type="button"
-              className="todoapp__toggle-all active"
+              className={classNames({
+                'todoapp__toggle-all': true,
+                active: todos.some(item => item.completed === true),
+              })}
               data-cy="ToggleAllButton"
+              onClick={event => {
+                event.preventDefault();
+                handleUpdateAllStatus();
+              }}
             />
           )}
 
@@ -163,9 +249,10 @@ export const App: React.FC = () => {
 
         <TodoList
           todos={filteredTodos}
-          toggleStatus={handleUpdate}
+          toggleStatus={handleStatusUpdate}
           deleteTodo={handleDeleteTodo}
           pendingList={pendingList}
+          renameTodo={handleRenameTodo}
         />
 
         {todosForFooter.length > 0 && (

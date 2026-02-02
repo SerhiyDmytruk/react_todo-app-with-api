@@ -6,6 +6,7 @@ type Props = {
   toggleStatus: (value: number) => void;
   deleteTodo: (value: number) => void;
   pendingList: number[];
+  renameTodo: (id: number, value: string) => void;
 };
 
 export const TodoList: React.FC<Props> = ({
@@ -13,6 +14,7 @@ export const TodoList: React.FC<Props> = ({
   toggleStatus,
   deleteTodo,
   pendingList,
+  renameTodo,
 }) => {
   return (
     <section className="todoapp__main" data-cy="TodoList">
@@ -23,6 +25,7 @@ export const TodoList: React.FC<Props> = ({
           toggleStatus={toggleStatus}
           deleteTodo={deleteTodo}
           pendingList={pendingList}
+          renameTodo={renameTodo}
         />
       ))}
     </section>
