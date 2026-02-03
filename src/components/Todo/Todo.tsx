@@ -112,7 +112,7 @@ export const TodoItem = forwardRef<HTMLDivElement, Props>(
             <input
               type="text"
               data-cy="TodoTitleField"
-              defaultValue={title}
+              value={value}
               placeholder="Empty todo will be deleted"
               className={classNames({
                 'todo__title-field': true,

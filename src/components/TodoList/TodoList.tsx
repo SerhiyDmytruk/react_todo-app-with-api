@@ -5,7 +5,7 @@ import { Todo } from '../../types/Todo';
 import { TodoItem } from '../Todo';
 
 type Props = {
-  todos: Todo[];
+  todos: (Todo & { temp?: boolean })[];
   toggleStatus: (value: number) => void;
   deleteTodo: (value: number) => Promise<boolean>;
   pendingList: number[];
@@ -40,13 +40,15 @@ export const TodoList: React.FC<Props> = ({
       <TransitionGroup>
         {todos.map(todo => {
           const nodeRef = getNodeRef(todo.id);
+          const isTemp = Boolean(todo.temp);
 
           return (
             <CSSTransition
               key={todo.id}
               nodeRef={nodeRef}
               timeout={300}
-              classNames="item"
+              classNames={isTemp ? 'temp-item' : 'item'}
+              exit={!isTemp}
             >
               <TodoItem
                 todo={todo}
