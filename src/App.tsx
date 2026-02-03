@@ -20,7 +20,7 @@ export const App: React.FC = () => {
   const [todos, setTodos] = useState<TodoWithTemp[]>([]);
   const [error, setError] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
-  const [filter, setFilter] = useState('all');
+  const [filter, setFilter] = useState<string | undefined>('all');
 
   const [disable, setDisable] = useState(false);
   const [inputValue, setInputValue] = useState('');
@@ -219,6 +219,13 @@ export const App: React.FC = () => {
     });
   };
 
+  const toggleAllButtonHandler = (
+    event: React.MouseEvent<HTMLButtonElement>,
+  ) => {
+    event.preventDefault();
+    handleUpdateAllStatus();
+  };
+
   if (!USER_ID) {
     return <UserWarning />;
   }
@@ -237,10 +244,7 @@ export const App: React.FC = () => {
                 active: todos.every(item => item.completed === true),
               })}
               data-cy="ToggleAllButton"
-              onClick={event => {
-                event.preventDefault();
-                handleUpdateAllStatus();
-              }}
+              onClick={toggleAllButtonHandler}
             />
           )}
 

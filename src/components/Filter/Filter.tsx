@@ -2,20 +2,27 @@ import classNames from 'classnames';
 import { useState } from 'react';
 
 type Props = {
-  setFilter: (data: string) => void;
+  setFilter: (data: string | undefined) => void;
 };
 
+const enum FilterType {
+  All = 'all',
+  Completed = 'completed',
+  Active = 'active',
+}
+
 export const Filter: React.FC<Props> = ({ setFilter }) => {
-  const FILTERS = ['all', 'completed', 'active'];
-  const [selected, setSelected] = useState('all');
+  const FILTERS = [FilterType.All, FilterType.Completed, FilterType.Active];
+  const [selected, setSelected] = useState<string | undefined>('all');
 
   const nameFormat = (str: string) => {
     return str[0].toUpperCase() + str.slice(1);
   };
 
-  const filterHandler = (item: string) => {
-    setSelected(item);
-    setFilter(item);
+  const filterHandler = (event: React.MouseEvent<HTMLAnchorElement>) => {
+    event.preventDefault();
+    setSelected(event.currentTarget.dataset.filter);
+    setFilter(event.currentTarget.dataset.filter);
   };
 
   return (
@@ -29,10 +36,8 @@ export const Filter: React.FC<Props> = ({ setFilter }) => {
           })}
           data-cy={`FilterLink${nameFormat(item)}`}
           key={item}
-          onClick={event => {
-            event.preventDefault();
-            filterHandler(item);
-          }}
+          data-filter={item}
+          onClick={filterHandler}
         >
           {nameFormat(item)}
         </a>

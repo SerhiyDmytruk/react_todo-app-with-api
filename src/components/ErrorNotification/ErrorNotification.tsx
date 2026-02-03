@@ -27,7 +27,12 @@ export const ErrorNotification: React.FC<Props> = ({
     return () => {
       window.clearTimeout(timeoutId);
     };
-  }, [status, statusMessage]);
+  }, [status, statusMessage, setStatus, setStatusMessage]);
+
+  const errorBtnHandler = () => {
+    setStatus(false);
+    setStatusMessage('');
+  };
 
   return (
     <div
@@ -41,10 +46,7 @@ export const ErrorNotification: React.FC<Props> = ({
         data-cy="HideErrorButton"
         type="button"
         className="delete"
-        onClick={() => {
-          setStatus(false);
-          setStatusMessage('');
-        }}
+        onClick={errorBtnHandler}
       />
       {statusMessage}
     </div>

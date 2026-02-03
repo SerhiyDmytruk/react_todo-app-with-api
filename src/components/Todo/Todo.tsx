@@ -1,6 +1,6 @@
 import classNames from 'classnames';
 import { Todo } from '../../types/Todo';
-import { forwardRef, useRef, useState } from 'react';
+import React, { forwardRef, useRef, useState } from 'react';
 import type { FormEvent } from 'react';
 
 type Props = {
@@ -55,6 +55,31 @@ export const TodoItem = forwardRef<HTMLDivElement, Props>(
       submitChanges();
     };
 
+    const blurHandler = () => {
+      if (isCancelling.current) {
+        isCancelling.current = false;
+
+        return;
+      }
+
+      submitChanges();
+    };
+
+    const keyUphandler = (event: React.KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        isCancelling.current = true;
+        isSubmitting.current = false;
+        setEditMode(false);
+      }
+    };
+
+    const doubleClickHandler = () => {
+      isCancelling.current = false;
+      isSubmitting.current = false;
+      setValue(title);
+      setEditMode(true);
+    };
+
     return (
       <div
         ref={ref}
@@ -93,25 +118,11 @@ export const TodoItem = forwardRef<HTMLDivElement, Props>(
                 'todo__title-field': true,
               })}
               autoFocus
-              onBlur={() => {
-                if (isCancelling.current) {
-                  isCancelling.current = false;
-
-                  return;
-                }
-
-                submitChanges();
-              }}
+              onBlur={blurHandler}
               onChange={event => {
                 setValue(event.target.value);
               }}
-              onKeyUp={event => {
-                if (event.key === 'Escape') {
-                  isCancelling.current = true;
-                  isSubmitting.current = false;
-                  setEditMode(false);
-                }
-              }}
+              onKeyUp={keyUphandler}
             />
           </form>
         ) : (
@@ -119,12 +130,7 @@ export const TodoItem = forwardRef<HTMLDivElement, Props>(
             <span
               data-cy="TodoTitle"
               className="todo__title"
-              onDoubleClick={() => {
-                isCancelling.current = false;
-                isSubmitting.current = false;
-                setValue(title);
-                setEditMode(true);
-              }}
+              onDoubleClick={doubleClickHandler}
             >
               {title}
             </span>

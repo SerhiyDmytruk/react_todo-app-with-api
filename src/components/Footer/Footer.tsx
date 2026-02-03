@@ -3,7 +3,7 @@ import { Filter } from '../Filter';
 
 type Props = {
   data: Todo[];
-  setFilter: (value: string) => void;
+  setFilter: (value: string | undefined) => void;
   clearCompeleted: () => void;
 };
 
@@ -24,6 +24,12 @@ export const Footer: React.FC<Props> = ({
     item => item.completed === true,
   ).length;
 
+  const footerHandler = (event: React.MouseEvent<HTMLButtonElement>) => {
+    event.preventDefault();
+
+    clearCompeleted();
+  };
+
   return (
     <footer className="todoapp__footer" data-cy="Footer">
       <span className="todo-count" data-cy="TodosCounter">
@@ -37,11 +43,7 @@ export const Footer: React.FC<Props> = ({
         className="todoapp__clear-completed"
         data-cy="ClearCompletedButton"
         disabled={completedLength > 0 ? false : true}
-        onClick={event => {
-          event.preventDefault();
-
-          clearCompeleted();
-        }}
+        onClick={footerHandler}
       >
         Clear completed
       </button>
